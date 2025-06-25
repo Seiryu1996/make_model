@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live2D エディター - 完全版</title>
-    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="./css/style.css" />
 </head>
 <body>
     <div id="canvas-area">
@@ -164,11 +164,17 @@
             • 目は左右別々に登録<br>
             • 髪は複数パーツで自然な動き
         </div>
+
+        <div>
+            angleX: <span id="angleXValue"></span><br>
+            angleY: <span id="angleYValue"></span><br>
+            angleZ: <span id="angleZValue"></span>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-    <script src="../js/index.js"></script>
+    <script src="./js/index.js"></script>
 </body>
 </html>

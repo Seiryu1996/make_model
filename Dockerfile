@@ -5,7 +5,7 @@ FROM nginx:alpine
 RUN apk add --no-cache openssl
 
 # HTML・nginx設定をコピー
-COPY ./html /usr/share/nginx/html
+COPY ./src /usr/share/nginx/html
 COPY ./nginx/default.conf /etc/nginx/conf.d/default.conf
 
 # SSLディレクトリを作成して証明書を生成

@@ -9,7 +9,7 @@ let faceTrackingEnabled = false;
 let cameraInstance = null;
 
 // パラメータ
-const params = {
+window.params = {
     blink: 0,
     mouth: 0,
     breath: 1
@@ -47,17 +47,17 @@ function setupEventListeners() {
     
     // 表情スライダー
     document.getElementById('blinkSlider').addEventListener('input', (e) => {
-        params.blink = e.target.value / 100;
+        window.params.blink = e.target.value / 100;
         document.getElementById('blinkValue').textContent = e.target.value + '%';
     });
     
     document.getElementById('mouthSlider').addEventListener('input', (e) => {
-        params.mouth = e.target.value / 100;
+        window.params.mouth = e.target.value / 100;
         document.getElementById('mouthValue').textContent = e.target.value + '%';
     });
     
     document.getElementById('breathSlider').addEventListener('input', (e) => {
-        params.breath = e.target.value / 100;
+        window.params.breath = e.target.value / 100;
         document.getElementById('breathValue').textContent = (e.target.value / 100).toFixed(1);
     });
     
@@ -305,8 +305,8 @@ function setExpression(type) {
     
     const expr = expressions[type];
     if (expr) {
-        params.blink = expr.blink;
-        params.mouth = expr.mouth;
+        window.params.blink = expr.blink;
+        window.params.mouth = expr.mouth;
         
         document.getElementById('blinkSlider').value = expr.blink * 100;
         document.getElementById('blinkValue').textContent = Math.round(expr.blink * 100) + '%';
@@ -332,7 +332,7 @@ function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // 呼吸
-    const breathY = Math.sin(animationTime * 2) * 5 * params.breath;
+    const breathY = Math.sin(animationTime * 2) * 5 * window.params.breath;
     
     // パーツ描画
     parts.forEach((part, index) => {
@@ -350,18 +350,25 @@ function animate() {
         let scaleY = part.scale;
         let rotation = (part.rotation || 0) * Math.PI / 180;
         
+        // Live2Dパーツタイプごとに首の回転・位置を反映
+        if (part.type === 'base' && window.params) {
+            rotation += (window.params.angleZ || 0) * Math.PI / 180;
+            x += (window.params.angleX || 0) * 0.5;
+            y += (window.params.angleY || 0) * 0.5;
+        }
+        
         // パーツタイプ別処理
         switch(part.type) {
             case 'eye':
-                scaleY *= (1 - params.blink * 0.8);
-                y += params.blink * 5;
+                scaleY *= (1 - window.params.blink * 0.8);
+                y += window.params.blink * 5;
                 break;
             case 'mouth':
-                scaleY *= (1 + params.mouth * 0.5);
-                y += params.mouth * 10;
+                scaleY *= (1 + window.params.mouth * 0.5);
+                y += window.params.mouth * 10;
                 break;
             case 'eyebrow':
-                if (params.blink > 0.3) {
+                if (window.params.blink > 0.3) {
                     rotation -= 10 * Math.PI / 180;
                 }
                 break;
@@ -407,6 +414,10 @@ function animate() {
         
         ctx.restore();
     });
+
+    document.getElementById('angleXValue').textContent = window.params.angleX?.toFixed(1) ?? '0';
+    document.getElementById('angleYValue').textContent = window.params.angleY?.toFixed(1) ?? '0';
+    document.getElementById('angleZValue').textContent = window.params.angleZ?.toFixed(1) ?? '0';
 }
 
 // アニメーション切り替え
@@ -443,7 +454,7 @@ function exportData() {
             scale: p.scale,
             rotation: p.rotation
         })),
-        params: params
+        params: window.params
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -558,7 +569,6 @@ function setupFaceTracking() {
 }
 
 function onFaceResults(results) {
-    console.log('onFaceResults', results);
     if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
         updateTrackingStatus('顔未検出');
         return;
@@ -592,8 +602,8 @@ function onFaceResults(results) {
     mouth = Math.max(0, Math.min(1, mouth));
 
     // 反映
-    params.blink = blink;
-    params.mouth = mouth;
+    window.params.blink = blink;
+    window.params.mouth = mouth;
 
     // スライダーUIも連動
     document.getElementById('blinkSlider').value = Math.round(blink * 100);
@@ -674,6 +684,39 @@ navigator.mediaDevices.getUserMedia({ video: true })
         video.srcObject = stream;
         video.play();
         console.log('getUserMedia成功');
+    })
+    .catch(err => {
+        alert('getUserMedia失敗: ' + err.message);
+        console.error('getUserMedia失敗', err);
+    });
+
+// 1. カメラ映像をvideoに流す
+navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+        const video = document.getElementById('debug-video');
+        video.srcObject = stream;
+        video.play();
+
+        // 2. MediaPipe FaceMeshを初期化
+        const faceMesh = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: false,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+        faceMesh.onResults(onFaceResults);
+
+        // 3. videoのフレームごとにMediaPipeに渡す
+        function processFrame() {
+            if (video.readyState >= 2) {
+                faceMesh.send({ image: video });
+            }
+            requestAnimationFrame(processFrame);
+        }
+        processFrame();
     })
     .catch(err => {
         alert('getUserMedia失敗: ' + err.message);
