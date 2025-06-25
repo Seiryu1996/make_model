@@ -181,7 +181,8 @@ function updatePartsList() {
             <div class="part-name">${part.name}</div>
             <select>
                 <option value="base" ${part.type === 'base' ? 'selected' : ''}>ベース</option>
-                <option value="eye" ${part.type === 'eye' ? 'selected' : ''}>目</option>
+                <option value="left_eye" ${part.type === 'left_eye' ? 'selected' : ''}>左目</option>
+                <option value="right_eye" ${part.type === 'right_eye' ? 'selected' : ''}>右目</option>
                 <option value="mouth" ${part.type === 'mouth' ? 'selected' : ''}>口</option>
                 <option value="eyebrow" ${part.type === 'eyebrow' ? 'selected' : ''}>眉</option>
                 <option value="hair" ${part.type === 'hair' ? 'selected' : ''}>髪</option>
@@ -350,18 +351,44 @@ function animate() {
         let scaleY = part.scale;
         let rotation = (part.rotation || 0) * Math.PI / 180;
         
-        // Live2Dパーツタイプごとに首の回転・位置を反映
-        if (part.type === 'base' && window.params) {
-            rotation += (window.params.angleZ || 0) * Math.PI / 180;
-            x += (window.params.angleX || 0) * 0.5;
-            y += (window.params.angleY || 0) * 0.5;
+        // 頭部姿勢の変換を全体に適用（相対的な位置関係を保持）
+        if (window.params) {
+            // 顔の中心点を基準とした変換
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            // パーツの中心点からの相対位置を計算
+            const relativeX = x - centerX;
+            const relativeY = y - centerY;
+            
+            // 頭部回転を適用
+            const headRotation = (window.params.angleZ || 0) * Math.PI / 180;
+            const cos = Math.cos(headRotation);
+            const sin = Math.sin(headRotation);
+            
+            // 回転行列による変換
+            const rotatedX = relativeX * cos - relativeY * sin;
+            const rotatedY = relativeX * sin + relativeY * cos;
+            
+            // 変換後の位置を設定
+            x = centerX + rotatedX + (window.params.angleX || 0) * 0.5;
+            y = centerY + rotatedY + (window.params.angleY || 0) * 0.5;
+            
+            // パーツ自体の回転に頭部回転を追加
+            rotation += headRotation;
         }
         
         // パーツタイプ別処理
         switch(part.type) {
-            case 'eye':
-                scaleY *= (1 - window.params.blink * 0.8);
-                y += window.params.blink * 5;
+            case 'left_eye':
+                const leftBlinkValue = (window.params.leftBlink || 0);
+                scaleY *= (1 - leftBlinkValue * 0.8);
+                y += leftBlinkValue * 5;
+                break;
+            case 'right_eye':
+                const rightBlinkValue = (window.params.rightBlink || 0);
+                scaleY *= (1 - rightBlinkValue * 0.8);
+                y += rightBlinkValue * 5;
                 break;
             case 'mouth':
                 scaleY *= (1 + window.params.mouth * 0.5);
@@ -579,16 +606,30 @@ function onFaceResults(results) {
     // 1つ目の顔ランドマークを取得
     const landmarks = results.multiFaceLandmarks[0];
 
-    // 目のまばたき度合いを計算（左目で例）
-    // MediaPipeのランドマーク番号は公式ドキュメント参照
-    // 33:左目外, 159:左目上, 145:左目下
+    // 左目のまばたき度合いを計算
+    // MediaPipeのランドマーク番号: 33:左目外, 159:左目上, 145:左目下, 133:左目内
     const leftEyeTop = landmarks[159];
     const leftEyeBottom = landmarks[145];
     const leftEyeOuter = landmarks[33];
+    const leftEyeInner = landmarks[133];
     const leftEyeOpen = Math.abs(leftEyeTop.y - leftEyeBottom.y);
-    const leftEyeWidth = Math.abs(leftEyeOuter.x - landmarks[133].x);
-    let blink = 1 - (leftEyeOpen / leftEyeWidth) * 2.5; // 調整値
-    blink = Math.max(0, Math.min(1, blink));
+    const leftEyeWidth = Math.abs(leftEyeOuter.x - leftEyeInner.x);
+    let leftBlink = 1 - (leftEyeOpen / leftEyeWidth) * 2.5;
+    leftBlink = Math.max(0, Math.min(1, leftBlink));
+
+    // 右目のまばたき度合いを計算
+    // MediaPipeのランドマーク番号: 362:右目外, 386:右目上, 374:右目下, 263:右目内
+    const rightEyeTop = landmarks[386];
+    const rightEyeBottom = landmarks[374];
+    const rightEyeOuter = landmarks[362];
+    const rightEyeInner = landmarks[263];
+    const rightEyeOpen = Math.abs(rightEyeTop.y - rightEyeBottom.y);
+    const rightEyeWidth = Math.abs(rightEyeOuter.x - rightEyeInner.x);
+    let rightBlink = 1 - (rightEyeOpen / rightEyeWidth) * 2.5;
+    rightBlink = Math.max(0, Math.min(1, rightBlink));
+
+    // 全体のまばたき（両目の平均）
+    let blink = (leftBlink + rightBlink) / 2;
 
     // 口の開き度合いを計算
     // 13:上唇, 14:下唇, 78:口左, 308:口右
@@ -601,9 +642,46 @@ function onFaceResults(results) {
     let mouth = (mouthOpen / mouthWidth) * 2.0; // 調整値
     mouth = Math.max(0, Math.min(1, mouth));
 
+    // 3D頭部姿勢推定: ピッチ、ヨー、ロールの計算
+    const noseTip = landmarks[1];        // 鼻先
+    const noseRoot = landmarks[6];       // 鼻根部
+    const leftEye = landmarks[33];       // 左目内角
+    const rightEye = landmarks[263];     // 右目内角
+    const leftMouth = landmarks[61];     // 口左端
+    const rightMouth = landmarks[291];   // 口右端
+
+    // ヨー角度（左右の回転）の計算
+    const eyeVector = {
+        x: rightEye.x - leftEye.x,
+        y: rightEye.y - leftEye.y,
+        z: rightEye.z - leftEye.z
+    };
+    const yaw = Math.atan2(eyeVector.z, eyeVector.x) * (180 / Math.PI);
+
+    // ピッチ角度（上下の回転）の計算
+    const noseVector = {
+        x: noseTip.x - noseRoot.x,
+        y: noseTip.y - noseRoot.y,
+        z: noseTip.z - noseRoot.z
+    };
+    const pitch = Math.atan2(noseVector.y, noseVector.z) * (180 / Math.PI);
+
+    // ロール角度（傾き）の計算
+    const mouthVector = {
+        x: rightMouth.x - leftMouth.x,
+        y: rightMouth.y - leftMouth.y,
+        z: rightMouth.z - leftMouth.z
+    };
+    const roll = Math.atan2(mouthVector.y, mouthVector.x) * (180 / Math.PI);
+
     // 反映
     window.params.blink = blink;
+    window.params.leftBlink = leftBlink;
+    window.params.rightBlink = rightBlink;
     window.params.mouth = mouth;
+    window.params.angleX = Math.max(-180, Math.min(180, pitch * 2));    // ピッチ
+    window.params.angleY = Math.max(-180, Math.min(180, yaw * 2));      // ヨー
+    window.params.angleZ = Math.max(-180, Math.min(180, roll * 2));     // ロール
 
     // スライダーUIも連動
     document.getElementById('blinkSlider').value = Math.round(blink * 100);
