@@ -30,7 +30,9 @@ function setupEventListeners() {
     });
     
     document.getElementById('partFileInput').addEventListener('change', (e) => {
-        if (e.target.files[0]) loadPartImage(e.target.files[0]);
+        if (e.target.files.length > 0) {
+            loadPartImages(e.target.files);
+        }
     });
     
     // キャンバスクリック
@@ -115,14 +117,14 @@ function loadMainImage(file) {
     reader.readAsDataURL(file);
 }
 
-// パーツ画像読み込み
-function loadPartImage(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-            const name = prompt('パーツ名を入力してください', file.name.replace(/\.[^/.]+$/, ''));
-            if (name) {
+// 複数パーツ画像読み込み
+function loadPartImages(fileList) {
+    Array.from(fileList).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const name = file.name.replace(/\.[^/.]+$/, '');
                 const scale = Math.min(150 / img.width, 150 / img.height);
                 parts.push({
                     name: name,
@@ -137,11 +139,11 @@ function loadPartImage(file) {
                 });
                 updatePartsList();
                 selectPart(parts.length - 1);
-            }
+            };
+            img.src = e.target.result;
         };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+    });
 }
 
 // パーツ追加
@@ -163,7 +165,7 @@ function updatePartsList() {
         
         item.innerHTML = `
             <div onclick="selectPart(${index})" style="flex: 1;">
-                <div class="part-name">${part.name}</div>
+                <div class="part-name" ondblclick="editPartName(${index})">${part.name}</div>
                 <select onclick="event.stopPropagation()" onchange="changePartType(${index}, this.value)">
                     <option value="base" ${part.type === 'base' ? 'selected' : ''}>ベース</option>
                     <option value="eye" ${part.type === 'eye' ? 'selected' : ''}>目</option>
@@ -383,4 +385,13 @@ function exportData() {
     a.download = 'live2d_model.json';
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// パーツ名編集
+function editPartName(index) {
+    const newName = prompt('新しいパーツ名を入力してください', parts[index].name);
+    if (newName) {
+        parts[index].name = newName;
+        updatePartsList();
+    }
 }

@@ -11,10 +11,16 @@
         <div id="upload-area" onclick="document.getElementById('mainFileInput').click()">
             <h2>🎨 Live2D エディター</h2>
             <p>イラストをアップロード</p>
+            <ul style="color:#81c784; font-size:13px; margin:10px 0 20px 0; text-align:left;">
+                <li>例: <code>head.png</code>（顔）</li>
+                <li>例: <code>eye_L.png</code>（左目）</li>
+                <li>例: <code>mouth_open.png</code>（口・開）</li>
+            </ul>
             <button>ファイルを選択</button>
         </div>
         <canvas id="canvas" width="700" height="700" class="hidden"></canvas>
         <input type="file" id="mainFileInput" accept="image/*">
+        <input type="file" id="partFileInput" accept="image/*" multiple>
     </div>
 
     <div id="controls">
@@ -26,7 +32,6 @@
             <h3>📁 パーツ管理</h3>
             <div id="partsList"></div>
             <button onclick="addPart()">➕ パーツを追加</button>
-            <input type="file" id="partFileInput" accept="image/*">
             
             <div id="transformControls" class="transform-section hidden">
                 <h4>🎯 選択中のパーツ</h4>
