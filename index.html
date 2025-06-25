@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live2D エディター - 完全版</title>
+    <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+    <div id="canvas-area">
+        <div id="upload-area" onclick="document.getElementById('mainFileInput').click()">
+            <h2>🎨 Live2D エディター</h2>
+            <p>イラストをアップロード</p>
+            <button>ファイルを選択</button>
+        </div>
+        <canvas id="canvas" width="700" height="700" class="hidden"></canvas>
+        <input type="file" id="mainFileInput" accept="image/*">
+    </div>
+
+    <div id="controls">
+        <div class="header">
+            <h1>Live2D Editor</h1>
+        </div>
+
+        <div class="section">
+            <h3>📁 パーツ管理</h3>
+            <div id="partsList"></div>
+            <button onclick="addPart()">➕ パーツを追加</button>
+            <input type="file" id="partFileInput" accept="image/*">
+            
+            <div id="transformControls" class="transform-section hidden">
+                <h4>🎯 選択中のパーツ</h4>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>位置 X</span>
+                        <span class="slider-value" id="posXValue">350</span>
+                    </div>
+                    <input type="range" id="posXSlider" min="0" max="700" value="350">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>位置 Y</span>
+                        <span class="slider-value" id="posYValue">350</span>
+                    </div>
+                    <input type="range" id="posYSlider" min="0" max="700" value="350">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>回転</span>
+                        <span class="slider-value" id="rotationValue">0°</span>
+                    </div>
+                    <input type="range" id="rotationSlider" min="-180" max="180" value="0">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>サイズ</span>
+                        <span class="slider-value" id="scaleValue">100%</span>
+                    </div>
+                    <input type="range" id="scaleSlider" min="10" max="200" value="100">
+                </div>
+                
+                <button onclick="deletePart()" class="delete-btn">🗑️ パーツを削除</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>😊 表情コントロール</h3>
+            
+            <div class="expression-grid">
+                <button class="expression-btn" onclick="setExpression('normal')">
+                    <span class="expression-emoji">😐</span>
+                    通常
+                </button>
+                <button class="expression-btn" onclick="setExpression('happy')">
+                    <span class="expression-emoji">😊</span>
+                    笑顔
+                </button>
+                <button class="expression-btn" onclick="setExpression('sad')">
+                    <span class="expression-emoji">😢</span>
+                    悲しい
+                </button>
+                <button class="expression-btn" onclick="setExpression('angry')">
+                    <span class="expression-emoji">😠</span>
+                    怒り
+                </button>
+                <button class="expression-btn" onclick="setExpression('surprised')">
+                    <span class="expression-emoji">😲</span>
+                    驚き
+                </button>
+                <button class="expression-btn" onclick="setExpression('wink')">
+                    <span class="expression-emoji">😉</span>
+                    ウインク
+                </button>
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>まばたき</span>
+                    <span class="slider-value" id="blinkValue">0%</span>
+                </div>
+                <input type="range" id="blinkSlider" min="0" max="100" value="0">
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>口の開き</span>
+                    <span class="slider-value" id="mouthValue">0%</span>
+                </div>
+                <input type="range" id="mouthSlider" min="0" max="100" value="0">
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🎬 アニメーション設定</h3>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>呼吸の深さ</span>
+                    <span class="slider-value" id="breathValue">1.0</span>
+                </div>
+                <input type="range" id="breathSlider" min="0" max="200" value="100">
+            </div>
+            
+            <button onclick="toggleAnimation()">
+                アニメーション ON/OFF
+            </button>
+        </div>
+
+        <div class="section">
+            <h3>💾 保存・書き出し</h3>
+            <button onclick="exportImage()">🖼️ 画像として保存</button>
+            <button onclick="exportData()">📄 データを保存</button>
+        </div>
+
+        <div class="info">
+            <strong>💡 使い方のコツ：</strong><br>
+            • パーツをクリックで選択<br>
+            • キャンバス上でも直接選択可能<br>
+            • 目は左右別々に登録<br>
+            • 髪は複数パーツで自然な動き
+        </div>
+    </div>
+
+    <script src="./js/index.js"></script>
+</body>
+</html>
