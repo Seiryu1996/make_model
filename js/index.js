@@ -89,6 +89,14 @@ function setupEventListeners() {
     });
 }
 
+// グローバル化
+window.selectPart = selectPart;
+window.editPartName = editPartName;
+window.changePartType = changePartType;
+window.togglePart = togglePart;
+window.movePartUp = movePartUp;
+window.movePartDown = movePartDown;
+
 // メイン画像読み込み
 function loadMainImage(file) {
     const reader = new FileReader();
@@ -105,7 +113,9 @@ function loadMainImage(file) {
                 scale: scale,
                 baseScale: scale,
                 rotation: 0,
-                visible: true
+                visible: true,
+                pivotX: img.width / 2,
+                pivotY: img.height / 2
             });
             
             document.getElementById('upload-area').classList.add('hidden');
@@ -135,7 +145,9 @@ function loadPartImages(fileList) {
                     scale: scale,
                     baseScale: scale,
                     rotation: 0,
-                    visible: true
+                    visible: true,
+                    pivotX: img.width / 2,
+                    pivotY: img.height / 2
                 });
                 updatePartsList();
                 selectPart(parts.length - 1);
@@ -164,22 +176,54 @@ function updatePartsList() {
         }
         
         item.innerHTML = `
-            <div onclick="selectPart(${index})" style="flex: 1;">
-                <div class="part-name" ondblclick="editPartName(${index})">${part.name}</div>
-                <select onclick="event.stopPropagation()" onchange="changePartType(${index}, this.value)">
-                    <option value="base" ${part.type === 'base' ? 'selected' : ''}>ベース</option>
-                    <option value="eye" ${part.type === 'eye' ? 'selected' : ''}>目</option>
-                    <option value="mouth" ${part.type === 'mouth' ? 'selected' : ''}>口</option>
-                    <option value="eyebrow" ${part.type === 'eyebrow' ? 'selected' : ''}>眉</option>
-                    <option value="hair" ${part.type === 'hair' ? 'selected' : ''}>髪</option>
-                    <option value="other" ${part.type === 'other' ? 'selected' : ''}>その他</option>
-                </select>
-            </div>
-            <button class="visibility-btn" onclick="togglePart(${index}); event.stopPropagation();">
-                ${part.visible ? '👁️' : '❌'}
-            </button>
+            <div class="part-name">${part.name}</div>
+            <select>
+                <option value="base" ${part.type === 'base' ? 'selected' : ''}>ベース</option>
+                <option value="eye" ${part.type === 'eye' ? 'selected' : ''}>目</option>
+                <option value="mouth" ${part.type === 'mouth' ? 'selected' : ''}>口</option>
+                <option value="eyebrow" ${part.type === 'eyebrow' ? 'selected' : ''}>眉</option>
+                <option value="hair" ${part.type === 'hair' ? 'selected' : ''}>髪</option>
+                <option value="other" ${part.type === 'other' ? 'selected' : ''}>その他</option>
+            </select>
+            <button class="visibility-btn">${part.visible ? '👁️' : '❌'}</button>
+            <button class="move-up-btn" style="width:28px;">⬆️</button>
+            <button class="move-down-btn" style="width:28px;">⬇️</button>
         `;
         
+        item.addEventListener('click', (e) => {
+            if (
+                e.target.classList.contains('visibility-btn') ||
+                e.target.classList.contains('move-up-btn') ||
+                e.target.classList.contains('move-down-btn') ||
+                e.target.tagName === 'SELECT'
+            ) return;
+            selectPart(index);
+        });
+
+        item.querySelector('.part-name').addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            editPartName(index);
+        });
+
+        item.querySelector('select').addEventListener('change', (e) => {
+            changePartType(index, e.target.value);
+            updatePartsList();
+        });
+
+        item.querySelector('.visibility-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            togglePart(index);
+        });
+
+        item.querySelector('.move-up-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            movePartUp(index);
+        });
+        item.querySelector('.move-down-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            movePartDown(index);
+        });
+
         list.appendChild(item);
     });
 }
@@ -188,6 +232,7 @@ function updatePartsList() {
 function selectPart(index) {
     selectedPartIndex = index;
     updatePartsList();
+    animate();
     
     if (index >= 0 && index < parts.length) {
         const part = parts[index];
@@ -291,6 +336,10 @@ function animate() {
     parts.forEach((part, index) => {
         if (!part.visible) return;
         
+        // pivotX, pivotYが未定義ならデフォルト値をセット
+        if (typeof part.pivotX !== 'number') part.pivotX = part.img.width / 2;
+        if (typeof part.pivotY !== 'number') part.pivotY = part.img.height / 2;
+        
         ctx.save();
         
         let x = part.x;
@@ -324,19 +373,36 @@ function animate() {
         ctx.rotate(rotation);
         ctx.scale(scaleX, scaleY);
         
+        // pivotを考慮して描画
+        ctx.drawImage(part.img, -part.pivotX, -part.pivotY);
+        
+        // 選択中のpivotマーカー
+        if (index === selectedPartIndex) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(0, 0, 10 / scaleX, 0, 2 * Math.PI);
+            ctx.fillStyle = 'red';
+            ctx.globalAlpha = 0.7;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2 / scaleX;
+            ctx.stroke();
+            ctx.restore();
+        }
+        
         // 選択中のハイライト
         if (index === selectedPartIndex) {
             ctx.strokeStyle = '#4fc3f7';
             ctx.lineWidth = 3 / scaleX;
             ctx.strokeRect(
-                -part.img.width / 2 - 10,
-                -part.img.height / 2 - 10,
+                -part.pivotX - 10,
+                -part.pivotY - 10,
                 part.img.width + 20,
                 part.img.height + 20
             );
         }
         
-        ctx.drawImage(part.img, -part.img.width / 2, -part.img.height / 2);
         ctx.restore();
     });
 }
@@ -395,3 +461,65 @@ function editPartName(index) {
         updatePartsList();
     }
 }
+
+// レイヤー順変更
+function movePartUp(index) {
+    if (index > 0) {
+        [parts[index - 1], parts[index]] = [parts[index], parts[index - 1]];
+        updatePartsList();
+    }
+}
+function movePartDown(index) {
+    if (index < parts.length - 1) {
+        [parts[index + 1], parts[index]] = [parts[index], parts[index + 1]];
+        updatePartsList();
+    }
+}
+
+// pivotドラッグ用変数
+let draggingPivot = false;
+let dragOffsetX = 0, dragOffsetY = 0;
+
+// キャンバスイベント追加
+canvas.addEventListener('mousedown', (e) => {
+    if (selectedPartIndex < 0) return;
+    const part = parts[selectedPartIndex];
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // パーツのpivot位置を計算
+    const px = part.x + Math.cos(part.rotation * Math.PI / 180) * (-(part.pivotX - part.img.width / 2) * part.scale);
+    const py = part.y + Math.sin(part.rotation * Math.PI / 180) * (-(part.pivotY - part.img.height / 2) * part.scale);
+
+    // pivotマーカー半径
+    const r = 10;
+    if (Math.abs(x - px) < r && Math.abs(y - py) < r) {
+        draggingPivot = true;
+        dragOffsetX = x - px;
+        dragOffsetY = y - py;
+    }
+});
+canvas.addEventListener('mousemove', (e) => {
+    if (!draggingPivot || selectedPartIndex < 0) return;
+    const part = parts[selectedPartIndex];
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - dragOffsetX;
+    const y = e.clientY - rect.top - dragOffsetY;
+
+    // 逆変換してpivotX, pivotYを求める
+    const dx = (x - part.x) / part.scale;
+    const dy = (y - part.y) / part.scale;
+    const angle = -part.rotation * Math.PI / 180;
+    const localX = Math.cos(angle) * dx - Math.sin(angle) * dy + part.img.width / 2;
+    const localY = Math.sin(angle) * dx + Math.cos(angle) * dy + part.img.height / 2;
+
+    part.pivotX = Math.max(0, Math.min(part.img.width, localX));
+    part.pivotY = Math.max(0, Math.min(part.img.height, localY));
+});
+canvas.addEventListener('mouseup', () => {
+    draggingPivot = false;
+});
+canvas.addEventListener('mouseleave', () => {
+    draggingPivot = false;
+});
