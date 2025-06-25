@@ -5,6 +5,8 @@ let selectedPartIndex = -1;
 let animating = true;
 let animationTime = 0;
 let animationId = null;
+let faceTrackingEnabled = false;
+let cameraInstance = null;
 
 // パラメータ
 const params = {
@@ -523,3 +525,157 @@ canvas.addEventListener('mouseup', () => {
 canvas.addEventListener('mouseleave', () => {
     draggingPivot = false;
 });
+
+function setupFaceTracking() {
+    videoElement = document.getElementById('debug-video');
+    if (!videoElement) {
+        console.error('debug-video要素が見つかりません');
+        return;
+    }
+
+    // ここを修正: new FaceMesh.FaceMesh → new FaceMesh
+    faceMesh = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    });
+
+    faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: false,
+        minDetectionConfidence: 0.7,
+        minTrackingConfidence: 0.7
+    });
+
+    faceMesh.onResults(onFaceResults);
+
+    const camera = new CameraUtils.Camera(videoElement, {
+        onFrame: async () => {
+            await faceMesh.send({image: videoElement});
+        },
+        width: 640,
+        height: 480
+    });
+    camera.start();
+}
+
+function onFaceResults(results) {
+    console.log('onFaceResults', results);
+    if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
+        updateTrackingStatus('顔未検出');
+        return;
+    }
+    updateTrackingStatus('顔検出中');
+    // console.log('onFaceResults', results);
+
+    // 1つ目の顔ランドマークを取得
+    const landmarks = results.multiFaceLandmarks[0];
+
+    // 目のまばたき度合いを計算（左目で例）
+    // MediaPipeのランドマーク番号は公式ドキュメント参照
+    // 33:左目外, 159:左目上, 145:左目下
+    const leftEyeTop = landmarks[159];
+    const leftEyeBottom = landmarks[145];
+    const leftEyeOuter = landmarks[33];
+    const leftEyeOpen = Math.abs(leftEyeTop.y - leftEyeBottom.y);
+    const leftEyeWidth = Math.abs(leftEyeOuter.x - landmarks[133].x);
+    let blink = 1 - (leftEyeOpen / leftEyeWidth) * 2.5; // 調整値
+    blink = Math.max(0, Math.min(1, blink));
+
+    // 口の開き度合いを計算
+    // 13:上唇, 14:下唇, 78:口左, 308:口右
+    const mouthTop = landmarks[13];
+    const mouthBottom = landmarks[14];
+    const mouthLeft = landmarks[78];
+    const mouthRight = landmarks[308];
+    const mouthOpen = Math.abs(mouthTop.y - mouthBottom.y);
+    const mouthWidth = Math.abs(mouthLeft.x - mouthRight.x);
+    let mouth = (mouthOpen / mouthWidth) * 2.0; // 調整値
+    mouth = Math.max(0, Math.min(1, mouth));
+
+    // 反映
+    params.blink = blink;
+    params.mouth = mouth;
+
+    // スライダーUIも連動
+    document.getElementById('blinkSlider').value = Math.round(blink * 100);
+    document.getElementById('blinkValue').textContent = Math.round(blink * 100) + '%';
+    document.getElementById('mouthSlider').value = Math.round(mouth * 100);
+    document.getElementById('mouthValue').textContent = Math.round(mouth * 100) + '%';
+}
+
+function toggleFaceTracking() {
+    faceTrackingEnabled = !faceTrackingEnabled;
+    const btn = document.getElementById('tracking-btn');
+    if (faceTrackingEnabled) {
+        btn.textContent = '⏸️ トラッキング停止';
+        btn.style.background = '#f44336';
+        updateTrackingStatus('有効');
+        startFaceTrackingCamera();
+    } else {
+        btn.textContent = '🔄 トラッキング開始';
+        btn.style.background = '#4fc3f7';
+        updateTrackingStatus('無効');
+        stopFaceTrackingCamera();
+    }
+}
+
+function startFaceTrackingCamera() {
+    if (cameraInstance) return;
+    videoElement = document.getElementById('debug-video');
+    faceMesh = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    });
+    faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: false,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+    faceMesh.onResults(onFaceResults);
+
+    // カメラ取得のエラーをcatch
+    cameraInstance = new Camera(videoElement, {
+        onFrame: async () => {
+            await faceMesh.send({image: videoElement});
+        },
+        width: 640,
+        height: 480
+    });
+    cameraInstance.start().then(() => {
+        console.log('カメラ起動成功');
+    }).catch((err) => {
+        alert('カメラ起動失敗: ' + err.message);
+        console.error('カメラ起動失敗', err);
+        updateTrackingStatus('カメラ取得失敗');
+    });
+}
+
+function stopFaceTrackingCamera() {
+    if (cameraInstance) {
+        cameraInstance.stop();
+        cameraInstance = null;
+    }
+    const video = document.getElementById('debug-video');
+    if (video) {
+        video.srcObject = null;
+    }
+}
+
+function updateTrackingStatus(status) {
+    const statusEl = document.getElementById('tracking-status');
+    if (statusEl) {
+        statusEl.textContent = `トラッキング: ${status}`;
+    }
+}
+
+// テスト用: カメラ映像だけをvideoに表示
+navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+        const video = document.getElementById('debug-video');
+        video.srcObject = stream;
+        video.play();
+        console.log('getUserMedia成功');
+    })
+    .catch(err => {
+        alert('getUserMedia失敗: ' + err.message);
+        console.error('getUserMedia失敗', err);
+    });
