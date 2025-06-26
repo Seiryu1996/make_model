@@ -37,11 +37,21 @@ function setupEventListeners() {
         }
     });
     
-    // キャンバスクリック
+    // キャンバスクリック（タッチ対応）
     canvas.addEventListener('click', (e) => {
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
+        selectPartAt(x, y);
+    });
+    
+    // タッチイベント追加
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
         selectPartAt(x, y);
     });
     
@@ -137,10 +147,15 @@ function loadPartImages(fileList) {
             const img = new Image();
             img.onload = () => {
                 const name = file.name.replace(/\.[^/.]+$/, '');
-                const scale = Math.min(150 / img.width, 150 / img.height);
+                // 画像が大きい場合はメイン画像サイズ、小さい場合はパーツサイズで自動判定
+                const isLargeImage = img.width > 300 || img.height > 300;
+                const scale = isLargeImage ? 
+                    Math.min(500 / img.width, 500 / img.height) : 
+                    Math.min(150 / img.width, 150 / img.height);
+                
                 parts.push({
                     name: name,
-                    type: 'other',
+                    type: isLargeImage ? 'base' : 'other',
                     img: img,
                     x: 350,
                     y: 350,
@@ -151,6 +166,11 @@ function loadPartImages(fileList) {
                     pivotX: img.width / 2,
                     pivotY: img.height / 2
                 });
+                
+                // キャンバス表示の切り替え（パーツ追加でも表示されるように）
+                document.getElementById('upload-area').classList.add('hidden');
+                document.getElementById('canvas').classList.remove('hidden');
+                
                 updatePartsList();
                 selectPart(parts.length - 1);
             };
@@ -517,32 +537,51 @@ function movePartDown(index) {
 let draggingPivot = false;
 let dragOffsetX = 0, dragOffsetY = 0;
 
-// キャンバスイベント追加
-canvas.addEventListener('mousedown', (e) => {
+// キャンバスイベント追加（マウス＋タッチ対応）
+function handlePointerStart(e) {
     if (selectedPartIndex < 0) return;
     const part = parts[selectedPartIndex];
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    let x, y;
+    
+    if (e.type === 'touchstart') {
+        e.preventDefault();
+        const touch = e.touches[0];
+        x = touch.clientX - rect.left;
+        y = touch.clientY - rect.top;
+    } else {
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
+    }
 
     // パーツのpivot位置を計算
     const px = part.x + Math.cos(part.rotation * Math.PI / 180) * (-(part.pivotX - part.img.width / 2) * part.scale);
     const py = part.y + Math.sin(part.rotation * Math.PI / 180) * (-(part.pivotY - part.img.height / 2) * part.scale);
 
-    // pivotマーカー半径
-    const r = 10;
+    // pivotマーカー半径（タッチの場合は大きく）
+    const r = e.type === 'touchstart' ? 20 : 10;
     if (Math.abs(x - px) < r && Math.abs(y - py) < r) {
         draggingPivot = true;
         dragOffsetX = x - px;
         dragOffsetY = y - py;
     }
-});
-canvas.addEventListener('mousemove', (e) => {
+}
+
+function handlePointerMove(e) {
     if (!draggingPivot || selectedPartIndex < 0) return;
     const part = parts[selectedPartIndex];
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - dragOffsetX;
-    const y = e.clientY - rect.top - dragOffsetY;
+    let x, y;
+    
+    if (e.type === 'touchmove') {
+        e.preventDefault();
+        const touch = e.touches[0];
+        x = touch.clientX - rect.left - dragOffsetX;
+        y = touch.clientY - rect.top - dragOffsetY;
+    } else {
+        x = e.clientX - rect.left - dragOffsetX;
+        y = e.clientY - rect.top - dragOffsetY;
+    }
 
     // 逆変換してpivotX, pivotYを求める
     const dx = (x - part.x) / part.scale;
@@ -553,13 +592,22 @@ canvas.addEventListener('mousemove', (e) => {
 
     part.pivotX = Math.max(0, Math.min(part.img.width, localX));
     part.pivotY = Math.max(0, Math.min(part.img.height, localY));
-});
-canvas.addEventListener('mouseup', () => {
+}
+
+function handlePointerEnd() {
     draggingPivot = false;
-});
-canvas.addEventListener('mouseleave', () => {
-    draggingPivot = false;
-});
+}
+
+// マウスイベント
+canvas.addEventListener('mousedown', handlePointerStart);
+canvas.addEventListener('mousemove', handlePointerMove);
+canvas.addEventListener('mouseup', handlePointerEnd);
+canvas.addEventListener('mouseleave', handlePointerEnd);
+
+// タッチイベント
+canvas.addEventListener('touchstart', handlePointerStart);
+canvas.addEventListener('touchmove', handlePointerMove);
+canvas.addEventListener('touchend', handlePointerEnd);
 
 function setupFaceTracking() {
     videoElement = document.getElementById('debug-video');

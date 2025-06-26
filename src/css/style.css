@@ -313,3 +313,267 @@ input[type="file"] {
 #controls::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
+
+/* モバイル・レスポンシブ対応 */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+        padding-top: 60px; /* ヘッダー固定のためのパディング */
+    }
+
+    #canvas-area {
+        order: 2;
+        height: calc(60vh - 60px);
+        min-height: 250px;
+    }
+
+    #canvas {
+        max-width: 95%;
+        max-height: 95%;
+        width: auto;
+        height: auto;
+    }
+
+    #controls {
+        order: 1;
+        width: 100%;
+        height: calc(40vh + 60px);
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+        padding: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .header h1 {
+        font-size: 18px;
+        margin: 0;
+    }
+
+    .section {
+        margin: 15px 10px;
+        margin-top: 20px; /* 最初のセクションとヘッダーの間隔 */
+        padding: 15px;
+    }
+
+    .section:first-of-type {
+        margin-top: 20px; /* 固定ヘッダー下のスペース確保 */
+    }
+
+    /* カメラデバッグエリアを小さく */
+    #camera-debug {
+        width: 120px !important;
+        height: 90px !important;
+    }
+
+    #debug-video {
+        width: 120px !important;
+        height: 90px !important;
+    }
+
+    /* 表情ボタンを2列にする */
+    .expression-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .expression-btn {
+        padding: 12px 5px;
+        font-size: 11px;
+    }
+
+    .expression-emoji {
+        font-size: 20px;
+    }
+
+    /* アップロードエリアを調整 */
+    #upload-area {
+        padding: 40px 20px;
+        margin: 10px;
+        border-radius: 15px;
+    }
+
+    #upload-area h2 {
+        font-size: 22px;
+    }
+
+    #upload-area ul {
+        font-size: 12px !important;
+    }
+
+    /* スライダーの調整 */
+    .slider-container {
+        margin: 12px 0;
+    }
+
+    .slider-label {
+        font-size: 12px;
+    }
+
+    /* ボタンの調整 */
+    button {
+        padding: 10px;
+        font-size: 13px;
+    }
+}
+
+/* 超小型デバイス対応 (iPhone SE など) */
+@media (max-width: 480px) {
+    body {
+        font-size: 14px;
+        padding-top: 50px; /* より小さなヘッダー高さ */
+    }
+
+    #canvas-area {
+        height: calc(50vh - 50px);
+        min-height: 200px;
+    }
+
+    #controls {
+        height: calc(50vh + 50px);
+    }
+
+    .header {
+        padding: 8px 10px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .header h1 {
+        font-size: 16px;
+    }
+
+    .section {
+        margin: 10px 5px;
+        padding: 12px;
+    }
+
+    h3 {
+        font-size: 14px;
+        margin-bottom: 12px;
+    }
+
+    /* カメラデバッグエリアをさらに小さく */
+    #camera-debug {
+        width: 80px !important;
+        height: 60px !important;
+        top: 5px !important;
+        right: 5px !important;
+    }
+
+    #debug-video {
+        width: 80px !important;
+        height: 60px !important;
+    }
+
+    #tracking-status {
+        font-size: 8px !important;
+        top: 2px !important;
+        left: 2px !important;
+    }
+
+    /* 表情ボタンを縦に配置 */
+    .expression-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .expression-btn {
+        padding: 8px;
+        font-size: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .expression-emoji {
+        font-size: 16px;
+        margin-bottom: 0;
+    }
+
+    /* アップロードエリア */
+    #upload-area {
+        padding: 30px 15px;
+        margin: 5px;
+    }
+
+    #upload-area h2 {
+        font-size: 18px;
+        margin-bottom: 15px;
+    }
+
+    #upload-area p {
+        font-size: 13px;
+        margin-bottom: 15px;
+    }
+
+    /* パーツアイテムの調整 */
+    .part-item {
+        padding: 10px;
+    }
+
+    .part-name {
+        font-size: 13px;
+    }
+
+    /* セレクトボックス */
+    select {
+        padding: 6px;
+        font-size: 12px;
+    }
+
+    /* スライダー */
+    .slider-label {
+        font-size: 11px;
+    }
+
+    .slider-value {
+        min-width: 40px;
+    }
+
+    /* ボタン */
+    button {
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    .visibility-btn {
+        padding: 4px 8px;
+        font-size: 14px;
+    }
+
+    /* インフォセクション */
+    .info {
+        font-size: 11px;
+        padding: 12px;
+        line-height: 1.6;
+    }
+}
+
+/* タブレット横向き対応 */
+@media (min-width: 769px) and (max-width: 1024px) {
+    #controls {
+        width: 320px;
+    }
+
+    .section {
+        margin: 15px;
+        padding: 15px;
+    }
+
+    .expression-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
