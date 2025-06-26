@@ -142,7 +142,9 @@
         <div class="section">
             <h3>💾 保存・書き出し</h3>
             <button onclick="exportImage()">🖼️ 画像として保存</button>
-            <button onclick="exportData()">📄 データを保存</button>
+            <button onclick="exportData()">📄 データを保存（軽量版）</button>
+            <button onclick="exportDataWithImages()">📦 完全データを保存（画像含む）</button>
+            <button onclick="importData()">📁 データを読み込み</button>
         </div>
 
         <div class="section">
@@ -170,7 +172,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-    <script src="./js/index.js"></script>
+    <script src="./js/parts_manager.js"></script>
     <script src="./js/face_tracking.js"></script>
+    <script src="./js/data_export.js"></script>
+    <script src="./js/data_import.js"></script>
 </body>
 </html>

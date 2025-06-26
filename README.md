@@ -78,16 +78,22 @@ docker-compose down --rmi all
 ### ディレクトリ構成
 ```
 make_model/
-├── src/                 # Webアプリケーションソース
-│   ├── index.html      # メインHTML
-│   ├── css/            # スタイルシート
-│   └── js/             # JavaScript
-│       ├── index.js           # メイン機能
-│       └── face_tracking.js   # フェイストラッキング
-├── nginx/              # Nginx設定
-├── Dockerfile          # Docker設定
-├── docker-compose.yml  # Docker Compose設定
-└── README.md          # このファイル
+├── src/                    # Webアプリケーションソース
+│   ├── index.html         # メインHTML
+│   ├── css/               # スタイルシート
+│   │   └── style.css     # メインスタイル
+│   └── js/                # JavaScript
+│       ├── parts_manager.js   # パーツ管理・アニメーション
+│       ├── face_tracking.js   # フェイストラッキング
+│       ├── data_export.js     # データ・画像エクスポート
+│       └── data_import.js     # データインポート
+├── nginx/                 # Nginx設定
+│   ├── default.conf      # Nginx設定ファイル
+│   └── ssl/              # SSL証明書（自動生成）
+├── Dockerfile             # Docker設定
+├── docker-compose.yml     # Docker Compose設定
+├── README.md             # このファイル
+└── DATA_FORMAT.md        # JSON形式仕様書
 ```
 
 ### 技術スタック

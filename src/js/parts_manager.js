@@ -569,46 +569,6 @@ function toggleAnimation() {
     animating = !animating;
 }
 
-// 画像エクスポート
-function exportImage() {
-    const tempSelected = selectedPartIndex;
-    selectedPartIndex = -1;
-    animate();
-    
-    canvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'live2d_export.png';
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        selectedPartIndex = tempSelected;
-    });
-}
-
-// データエクスポート
-function exportData() {
-    const data = {
-        version: '1.0',
-        parts: parts.map(p => ({
-            name: p.name,
-            type: p.type,
-            y: p.y,
-            scale: p.scale,
-            rotation: p.rotation
-        })),
-        params: window.params
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'live2d_model.json';
-    a.click();
-    URL.revokeObjectURL(url);
-}
 
 // パーツ名編集
 function editPartName(index) {
