@@ -77,13 +77,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     window.params.angleZ = Math.max(-180, Math.min(180, roll * 2));     // ロール
                 }
 
-                // 必要ならUIにも反映
-                const angleXValue = document.getElementById('angleXValue');
-                const angleYValue = document.getElementById('angleYValue');
-                const angleZValue = document.getElementById('angleZValue');
-                if (angleXValue) angleXValue.textContent = (window.params.angleX || 0).toFixed(1) + '°';
-                if (angleYValue) angleYValue.textContent = (window.params.angleY || 0).toFixed(1) + '°';
-                if (angleZValue) angleZValue.textContent = (window.params.angleZ || 0).toFixed(1) + '°';
             });
 
             function processFrame() {

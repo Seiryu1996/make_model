@@ -442,9 +442,6 @@ function animate() {
         ctx.restore();
     });
 
-    document.getElementById('angleXValue').textContent = window.params.angleX?.toFixed(1) ?? '0';
-    document.getElementById('angleYValue').textContent = window.params.angleY?.toFixed(1) ?? '0';
-    document.getElementById('angleZValue').textContent = window.params.angleZ?.toFixed(1) ?? '0';
 }
 
 // アニメーション切り替え
