@@ -5,8 +5,12 @@ let selectedPartIndex = -1;
 let animating = true;
 let animationTime = 0;
 let animationId = null;
-let faceTrackingEnabled = false;
 let cameraInstance = null;
+
+// モバイル用ドラッグ変数
+let isDragging = false;
+let dragStartX = 0;
+let dragStartY = 0;
 
 // パラメータ
 window.params = {
@@ -22,7 +26,25 @@ window.addEventListener('DOMContentLoaded', () => {
     
     setupEventListeners();
     startAnimation();
+    
+    // 既存パーツの位置を中央に修正（もしあれば）
+    fixExistingPartsPosition();
 });
+
+// 既存パーツの位置修正
+function fixExistingPartsPosition() {
+    if (parts.length > 0) {
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        parts.forEach((part, index) => {
+            if (part.x === 350 && part.y === 350) {
+                part.x = centerX;
+                part.y = centerY;
+            }
+        });
+    }
+}
 
 // イベントリスナー設定
 function setupEventListeners() {
@@ -40,19 +62,67 @@ function setupEventListeners() {
     // キャンバスクリック（タッチ対応）
     canvas.addEventListener('click', (e) => {
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
         selectPartAt(x, y);
     });
     
-    // タッチイベント追加
+    // タッチイベント追加（パーツ選択とドラッグ対応）
     canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
         const touch = e.touches[0];
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (touch.clientX - rect.left) * scaleX;
+        const y = (touch.clientY - rect.top) * scaleY;
+        
         selectPartAt(x, y);
+        
+        // ドラッグ開始の準備
+        if (selectedPartIndex >= 0) {
+            isDragging = true;
+            dragStartX = x;
+            dragStartY = y;
+        }
+    });
+    
+    // タッチムーブ（ドラッグ）
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (!isDragging || selectedPartIndex < 0) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (touch.clientX - rect.left) * scaleX;
+        const y = (touch.clientY - rect.top) * scaleY;
+        
+        // パーツの位置を更新
+        const deltaX = x - dragStartX;
+        const deltaY = y - dragStartY;
+        
+        parts[selectedPartIndex].x += deltaX;
+        parts[selectedPartIndex].y += deltaY;
+        
+        // スライダーの値も更新
+        document.getElementById('posXSlider').value = parts[selectedPartIndex].x;
+        document.getElementById('posXValue').textContent = Math.round(parts[selectedPartIndex].x);
+        document.getElementById('posYSlider').value = parts[selectedPartIndex].y;
+        document.getElementById('posYValue').textContent = Math.round(parts[selectedPartIndex].y);
+        
+        // 次のフレームのための開始位置を更新
+        dragStartX = x;
+        dragStartY = y;
+    });
+    
+    // タッチエンド
+    canvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        isDragging = false;
     });
     
     // 表情スライダー
@@ -99,6 +169,17 @@ function setupEventListeners() {
             document.getElementById('scaleValue').textContent = e.target.value + '%';
         }
     });
+    
+    // pivotドラッグ用のマウスイベント
+    canvas.addEventListener('mousedown', handlePointerStart);
+    canvas.addEventListener('mousemove', handlePointerMove);
+    canvas.addEventListener('mouseup', handlePointerEnd);
+    canvas.addEventListener('mouseleave', handlePointerEnd);
+
+    // pivotドラッグ用のタッチイベント
+    canvas.addEventListener('touchstart', handlePointerStart);
+    canvas.addEventListener('touchmove', handlePointerMove);
+    canvas.addEventListener('touchend', handlePointerEnd);
 }
 
 // グローバル化
@@ -116,12 +197,15 @@ function loadMainImage(file) {
         const img = new Image();
         img.onload = () => {
             const scale = Math.min(500 / img.width, 500 / img.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
             parts.push({
                 name: 'ベース',
                 type: 'base',
                 img: img,
-                x: 350,
-                y: 350,
+                x: centerX,
+                y: centerY,
                 scale: scale,
                 baseScale: scale,
                 rotation: 0,
@@ -129,6 +213,7 @@ function loadMainImage(file) {
                 pivotX: img.width / 2,
                 pivotY: img.height / 2
             });
+            
             
             document.getElementById('upload-area').classList.add('hidden');
             document.getElementById('canvas').classList.remove('hidden');
@@ -153,12 +238,16 @@ function loadPartImages(fileList) {
                     Math.min(500 / img.width, 500 / img.height) : 
                     Math.min(150 / img.width, 150 / img.height);
                 
+                // キャンバスの中心に配置
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                
                 parts.push({
                     name: name,
                     type: isLargeImage ? 'base' : 'other',
                     img: img,
-                    x: 350,
-                    y: 350,
+                    x: centerX,
+                    y: centerY,
                     scale: scale,
                     baseScale: scale,
                     rotation: 0,
@@ -166,6 +255,7 @@ function loadPartImages(fileList) {
                     pivotX: img.width / 2,
                     pivotY: img.height / 2
                 });
+                
                 
                 // キャンバス表示の切り替え（パーツ追加でも表示されるように）
                 document.getElementById('upload-area').classList.add('hidden');
@@ -277,6 +367,8 @@ function selectPart(index) {
 
 // キャンバス上のパーツ選択
 function selectPartAt(x, y) {
+    if (parts.length === 0) return;
+    
     for (let i = parts.length - 1; i >= 0; i--) {
         const part = parts[i];
         if (!part.visible) continue;
@@ -285,7 +377,12 @@ function selectPartAt(x, y) {
         const dy = y - part.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         
-        if (dist < part.img.width * part.scale / 2) {
+        // スマホの場合は判定範囲を大きくする
+        const isMobile = window.innerWidth <= 768;
+        const baseRadius = Math.max(part.img.width * part.scale / 2, part.img.height * part.scale / 2);
+        const hitRadius = isMobile ? Math.max(baseRadius, 80) : Math.max(baseRadius, 40);
+        
+        if (dist < hitRadius) {
             selectPart(i);
             return;
         }
@@ -352,8 +449,8 @@ function animate() {
     // キャンバスクリア
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // 呼吸
-    const breathY = Math.sin(animationTime * 2) * 5 * window.params.breath;
+    // 呼吸（無効化）
+    const breathY = 0;
     
     // パーツ描画
     parts.forEach((part, index) => {
@@ -402,26 +499,29 @@ function animate() {
         switch(part.type) {
             case 'left_eye':
                 const leftBlinkValue = (window.params.leftBlink || 0);
-                scaleY *= (1 - leftBlinkValue * 0.8);
-                y += leftBlinkValue * 5;
+                // 左目は左目のみの値を使用（全体のblinkは使わない）
+                scaleY *= (1 - leftBlinkValue * 0.95);
+                y += leftBlinkValue * 2;
                 break;
             case 'right_eye':
                 const rightBlinkValue = (window.params.rightBlink || 0);
-                scaleY *= (1 - rightBlinkValue * 0.8);
-                y += rightBlinkValue * 5;
+                // 右目は右目のみの値を使用（全体のblinkは使わない）
+                scaleY *= (1 - rightBlinkValue * 0.95);
+                y += rightBlinkValue * 2;
                 break;
             case 'mouth':
                 scaleY *= (1 + window.params.mouth * 0.5);
                 y += window.params.mouth * 10;
                 break;
             case 'eyebrow':
-                if (window.params.blink > 0.3) {
+                // 眉毛は全体のblinkではなく、より強い方の目に反応
+                const maxBlink = Math.max(window.params.leftBlink || 0, window.params.rightBlink || 0);
+                if (maxBlink > 0.3) {
                     rotation -= 10 * Math.PI / 180;
                 }
                 break;
             case 'hair':
-                x += Math.sin(animationTime * 0.8) * 3;
-                rotation += Math.sin(animationTime * 0.8) * 0.02;
+                // 髪の揺れを無効化
                 break;
         }
         
@@ -598,250 +698,6 @@ function handlePointerEnd() {
     draggingPivot = false;
 }
 
-// マウスイベント
-canvas.addEventListener('mousedown', handlePointerStart);
-canvas.addEventListener('mousemove', handlePointerMove);
-canvas.addEventListener('mouseup', handlePointerEnd);
-canvas.addEventListener('mouseleave', handlePointerEnd);
 
-// タッチイベント
-canvas.addEventListener('touchstart', handlePointerStart);
-canvas.addEventListener('touchmove', handlePointerMove);
-canvas.addEventListener('touchend', handlePointerEnd);
 
-function setupFaceTracking() {
-    videoElement = document.getElementById('debug-video');
-    if (!videoElement) {
-        console.error('debug-video要素が見つかりません');
-        return;
-    }
 
-    // ここを修正: new FaceMesh.FaceMesh → new FaceMesh
-    faceMesh = new FaceMesh({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-    });
-
-    faceMesh.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: false,
-        minDetectionConfidence: 0.7,
-        minTrackingConfidence: 0.7
-    });
-
-    faceMesh.onResults(onFaceResults);
-
-    const camera = new CameraUtils.Camera(videoElement, {
-        onFrame: async () => {
-            await faceMesh.send({image: videoElement});
-        },
-        width: 640,
-        height: 480
-    });
-    camera.start();
-}
-
-function onFaceResults(results) {
-    if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
-        updateTrackingStatus('顔未検出');
-        return;
-    }
-    updateTrackingStatus('顔検出中');
-    // console.log('onFaceResults', results);
-
-    // 1つ目の顔ランドマークを取得
-    const landmarks = results.multiFaceLandmarks[0];
-
-    // 左目のまばたき度合いを計算
-    // MediaPipeのランドマーク番号: 33:左目外, 159:左目上, 145:左目下, 133:左目内
-    const leftEyeTop = landmarks[159];
-    const leftEyeBottom = landmarks[145];
-    const leftEyeOuter = landmarks[33];
-    const leftEyeInner = landmarks[133];
-    const leftEyeOpen = Math.abs(leftEyeTop.y - leftEyeBottom.y);
-    const leftEyeWidth = Math.abs(leftEyeOuter.x - leftEyeInner.x);
-    let leftBlink = 1 - (leftEyeOpen / leftEyeWidth) * 2.5;
-    leftBlink = Math.max(0, Math.min(1, leftBlink));
-
-    // 右目のまばたき度合いを計算
-    // MediaPipeのランドマーク番号: 362:右目外, 386:右目上, 374:右目下, 263:右目内
-    const rightEyeTop = landmarks[386];
-    const rightEyeBottom = landmarks[374];
-    const rightEyeOuter = landmarks[362];
-    const rightEyeInner = landmarks[263];
-    const rightEyeOpen = Math.abs(rightEyeTop.y - rightEyeBottom.y);
-    const rightEyeWidth = Math.abs(rightEyeOuter.x - rightEyeInner.x);
-    let rightBlink = 1 - (rightEyeOpen / rightEyeWidth) * 2.5;
-    rightBlink = Math.max(0, Math.min(1, rightBlink));
-
-    // 全体のまばたき（両目の平均）
-    let blink = (leftBlink + rightBlink) / 2;
-
-    // 口の開き度合いを計算
-    // 13:上唇, 14:下唇, 78:口左, 308:口右
-    const mouthTop = landmarks[13];
-    const mouthBottom = landmarks[14];
-    const mouthLeft = landmarks[78];
-    const mouthRight = landmarks[308];
-    const mouthOpen = Math.abs(mouthTop.y - mouthBottom.y);
-    const mouthWidth = Math.abs(mouthLeft.x - mouthRight.x);
-    let mouth = (mouthOpen / mouthWidth) * 2.0; // 調整値
-    mouth = Math.max(0, Math.min(1, mouth));
-
-    // 3D頭部姿勢推定: ピッチ、ヨー、ロールの計算
-    const noseTip = landmarks[1];        // 鼻先
-    const noseRoot = landmarks[6];       // 鼻根部
-    const leftEye = landmarks[33];       // 左目内角
-    const rightEye = landmarks[263];     // 右目内角
-    const leftMouth = landmarks[61];     // 口左端
-    const rightMouth = landmarks[291];   // 口右端
-
-    // ヨー角度（左右の回転）の計算
-    const eyeVector = {
-        x: rightEye.x - leftEye.x,
-        y: rightEye.y - leftEye.y,
-        z: rightEye.z - leftEye.z
-    };
-    const yaw = Math.atan2(eyeVector.z, eyeVector.x) * (180 / Math.PI);
-
-    // ピッチ角度（上下の回転）の計算
-    const noseVector = {
-        x: noseTip.x - noseRoot.x,
-        y: noseTip.y - noseRoot.y,
-        z: noseTip.z - noseRoot.z
-    };
-    const pitch = Math.atan2(noseVector.y, noseVector.z) * (180 / Math.PI);
-
-    // ロール角度（傾き）の計算
-    const mouthVector = {
-        x: rightMouth.x - leftMouth.x,
-        y: rightMouth.y - leftMouth.y,
-        z: rightMouth.z - leftMouth.z
-    };
-    const roll = Math.atan2(mouthVector.y, mouthVector.x) * (180 / Math.PI);
-
-    // 反映
-    window.params.blink = blink;
-    window.params.leftBlink = leftBlink;
-    window.params.rightBlink = rightBlink;
-    window.params.mouth = mouth;
-    window.params.angleX = Math.max(-180, Math.min(180, pitch * 2));    // ピッチ
-    window.params.angleY = Math.max(-180, Math.min(180, yaw * 2));      // ヨー
-    window.params.angleZ = Math.max(-180, Math.min(180, roll * 2));     // ロール
-
-    // スライダーUIも連動
-    document.getElementById('blinkSlider').value = Math.round(blink * 100);
-    document.getElementById('blinkValue').textContent = Math.round(blink * 100) + '%';
-    document.getElementById('mouthSlider').value = Math.round(mouth * 100);
-    document.getElementById('mouthValue').textContent = Math.round(mouth * 100) + '%';
-}
-
-function toggleFaceTracking() {
-    faceTrackingEnabled = !faceTrackingEnabled;
-    const btn = document.getElementById('tracking-btn');
-    if (faceTrackingEnabled) {
-        btn.textContent = '⏸️ トラッキング停止';
-        btn.style.background = '#f44336';
-        updateTrackingStatus('有効');
-        startFaceTrackingCamera();
-    } else {
-        btn.textContent = '🔄 トラッキング開始';
-        btn.style.background = '#4fc3f7';
-        updateTrackingStatus('無効');
-        stopFaceTrackingCamera();
-    }
-}
-
-function startFaceTrackingCamera() {
-    if (cameraInstance) return;
-    videoElement = document.getElementById('debug-video');
-    faceMesh = new FaceMesh({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-    });
-    faceMesh.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: false,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-    });
-    faceMesh.onResults(onFaceResults);
-
-    // カメラ取得のエラーをcatch
-    cameraInstance = new Camera(videoElement, {
-        onFrame: async () => {
-            await faceMesh.send({image: videoElement});
-        },
-        width: 640,
-        height: 480
-    });
-    cameraInstance.start().then(() => {
-        console.log('カメラ起動成功');
-    }).catch((err) => {
-        alert('カメラ起動失敗: ' + err.message);
-        console.error('カメラ起動失敗', err);
-        updateTrackingStatus('カメラ取得失敗');
-    });
-}
-
-function stopFaceTrackingCamera() {
-    if (cameraInstance) {
-        cameraInstance.stop();
-        cameraInstance = null;
-    }
-    const video = document.getElementById('debug-video');
-    if (video) {
-        video.srcObject = null;
-    }
-}
-
-function updateTrackingStatus(status) {
-    const statusEl = document.getElementById('tracking-status');
-    if (statusEl) {
-        statusEl.textContent = `トラッキング: ${status}`;
-    }
-}
-
-// テスト用: カメラ映像だけをvideoに表示
-navigator.mediaDevices.getUserMedia({ video: true })
-    .then(stream => {
-        const video = document.getElementById('debug-video');
-        video.srcObject = stream;
-        video.play();
-        console.log('getUserMedia成功');
-    })
-    .catch(err => {
-        alert('getUserMedia失敗: ' + err.message);
-        console.error('getUserMedia失敗', err);
-    });
-
-// 1. カメラ映像をvideoに流す
-navigator.mediaDevices.getUserMedia({ video: true })
-    .then(stream => {
-        const video = document.getElementById('debug-video');
-        video.srcObject = stream;
-        video.play();
-
-        // 2. MediaPipe FaceMeshを初期化
-        const faceMesh = new FaceMesh({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-        });
-        faceMesh.setOptions({
-            maxNumFaces: 1,
-            refineLandmarks: false,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
-        faceMesh.onResults(onFaceResults);
-
-        // 3. videoのフレームごとにMediaPipeに渡す
-        function processFrame() {
-            if (video.readyState >= 2) {
-                faceMesh.send({ image: video });
-            }
-            requestAnimationFrame(processFrame);
-        }
-        processFrame();
-    })
-    .catch(err => {
-        alert('getUserMedia失敗: ' + err.message);
-        console.error('getUserMedia失敗', err);
-    });
